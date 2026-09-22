@@ -1,0 +1,31 @@
+{
+  "name": "huntley",
+  "version": "0.1.0",
+  "description": "A personal job-search pipeline: scan every layer, dedupe, rank against your background, and mail you one digest a day. You apply yourself.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "huntley": "./bin/huntley.mjs"
+  },
+  "scripts": {
+    "huntley": "node bin/huntley.mjs",
+    "run": "node bin/huntley.mjs run",
+    "daily": "node bin/huntley.mjs daily",
+    "weekly": "node bin/huntley.mjs weekly",
+    "doctor": "node bin/huntley.mjs doctor",
+    "setup": "node bin/huntley.mjs setup",
+    "test": "node --test \"tests/**/*.test.mjs\"",
+    "test:unit": "node --test \"tests/!(e2e).test.mjs\"",
+    "test:e2e": "node --test tests/e2e.test.mjs",
+    "test:live": "node tests/live-smoke.mjs",
+    "check": "npm test && npm run test:live"
+  },
+  "dependencies": {
+    "dotenv": "^17.0.0",
+    "js-yaml": "^5.4.1"
+  }
+}

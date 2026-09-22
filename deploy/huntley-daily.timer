@@ -1,0 +1,19 @@
+[Unit]
+Description=huntley — daily job digest at 06:30
+Documentation=https://github.com/victorjaml/huntley
+
+[Timer]
+OnCalendar=*-*-* 06:30:00
+# Every job board in the world is scraped on the hour. A small jitter avoids
+# arriving with the crowd, and the digest is not time-critical to the minute.
+RandomizedDelaySec=6min
+
+# THE IMPORTANT LINE. If the server was asleep, rebooting, or offline at 06:30,
+# run as soon as it is back. Without this a missed window is simply skipped —
+# and a skipped run looks exactly like a quiet job market.
+Persistent=true
+
+Unit=huntley-daily.service
+
+[Install]
+WantedBy=timers.target

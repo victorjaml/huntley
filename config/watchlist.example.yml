@@ -1,0 +1,209 @@
+# huntley — company and fund watchlist.
+#
+# Which companies and funds to check every morning through their own job boards.
+# Matching roles from companies you named earn a score bonus
+# (rank.watchlist_bonus in huntley.yml, default +0.5).
+#
+# Copy to config/watchlist.yml (`huntley setup` does this). Nothing here exempts
+# a role from your title, location or company rules — those live in
+# config/preferences.yml and apply to every role.
+#
+#   tracked_companies  companies you care about (bonus + digest badge)
+#   portfolio_boards   VC talent-network boards (Getro / Consider); no bonus
+#   fund_portfolios    VC funds without such a board; companies resolved and
+#                      scanned every run; no bonus
+#
+# Adding companies the easy way:
+#
+#   node bin/huntley.mjs discover-board "Company Name" --summary
+#
+# probes the public job-board APIs, reports which board each company uses, and
+# prints entries ready to paste. Add --write to append them for you.
+
+# ── Companies you named ─────────────────────────────────────────────
+#
+# Fields per entry:
+#   name          required — display name and watchlist-bonus key
+#   careers_url   required — the ATS board URL, not the marketing careers page
+#   provider      optional — ashby | greenhouse | lever | gem | … (discover-ats
+#                 usually fills this in; leave blank to auto-detect)
+#   api           optional — Greenhouse JSON API URL when the board needs it
+#   enabled       default true — set false to keep the entry without scanning
+
+tracked_companies:
+
+  - name: "Example Company"
+    careers_url: "https://jobs.ashbyhq.com/example"
+    provider: ashby
+    enabled: true
+
+  # Greenhouse boards often include an `api` URL from discover-ats:
+  # - name: "Example Greenhouse Co"
+  #   careers_url: "https://job-boards.greenhouse.io/example"
+  #   api: "https://boards-api.greenhouse.io/v1/boards/example/jobs"
+  #   provider: greenhouse
+  #   enabled: true
+
+# ── VC talent-network boards ────────────────────────────────────────
+#
+# A fund's aggregated job board across its whole portfolio — a cheap way to
+# reach hundreds of startups you have never named. Matching roles get no
+# watchlist bonus; your title and location rules still apply.
+#
+# Getro boards need only careers_url (+ provider: getro).
+# Consider boards also need consider_board (the board slug).
+# getro_max_age_days bounds pagination — this is a daily digest, so paging
+# months of stale postings buys nothing (default if omitted: provider default).
+
+portfolio_boards:
+
+  # Verified live talent-network boards.
+  - name: "General Catalyst (portfolio)"
+    careers_url: "https://jobs.generalcatalyst.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Accel (portfolio)"
+    careers_url: "https://jobs.accel.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Khosla Ventures (portfolio)"
+    careers_url: "https://jobs.khoslaventures.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Lux Capital (portfolio)"
+    careers_url: "https://jobs.luxcapital.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Menlo Ventures (portfolio)"
+    careers_url: "https://jobs.menlovc.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Founders Fund (portfolio)"
+    careers_url: "https://foundersfund.getro.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Index Ventures (portfolio)"
+    careers_url: "https://indexventures.getro.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Wing Venture Capital (portfolio)"
+    careers_url: "https://wing.getro.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Redpoint Ventures (portfolio)"
+    careers_url: "https://careers.redpoint.com/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "B Capital (portfolio)"
+    careers_url: "https://jobs.b.capital/jobs"
+    provider: getro
+    getro_max_age_days: 7
+    enabled: true
+
+  - name: "Sequoia Capital (portfolio)"
+    careers_url: "https://jobs.sequoiacap.com/jobs"
+    provider: consider
+    consider_board: sequoia-capital
+    enabled: true
+
+  - name: "Bessemer Venture Partners (portfolio)"
+    careers_url: "https://jobs.bvp.com/jobs"
+    provider: consider
+    consider_board: bessemer-ventures
+    enabled: true
+
+  - name: "Lightspeed (portfolio)"
+    careers_url: "https://jobs.lsvp.com/jobs"
+    provider: consider
+    consider_board: lightspeed
+    enabled: true
+
+  - name: "Kleiner Perkins (portfolio)"
+    careers_url: "https://jobs.kleinerperkins.com/jobs"
+    provider: consider
+    consider_board: kleiner-perkins
+    enabled: true
+
+  - name: "DataPower Ventures (portfolio)"
+    careers_url: "https://jobs.datapower.vc/jobs"
+    provider: consider
+    consider_board: datapower-ventures
+    enabled: true
+
+  - name: "Andreessen Horowitz (portfolio)"
+    careers_url: "https://portfoliojobs.a16z.com/jobs"
+    provider: consider
+    consider_board: andreessen-horowitz
+    enabled: true
+
+# ── Scanner-specific settings ───────────────────────────────────────
+#
+# Titles, keywords and locations do NOT belong here — see preferences.yml.
+# Only settings with no huntley equivalent pass through to career-ops.
+
+# Let a posting become eligible again if it is republished at the same URL
+# after this many days. Without it, a URL is deduplicated forever.
+scan_history:
+  recheck_after_days: 60
+
+# ── Fund portfolios (no Getro / Consider board) ─────────────────────
+#
+# huntley lists each fund's companies, finds each company's job board from its
+# own website, and scans those boards every run. Roles here earn no bonus.
+#
+# `kind` is the shape of the fund's public page:
+#   yc             YC's company directory (hiring companies only); no url needed
+#   ats_links      a page linking to job boards or postings on them
+#   company_links  a portfolio page linking to company websites
+#   wordpress      a WordPress portfolio post type (…/wp-json/wp/v2/<type>)
+#
+# Fields: name, kind, url (required except for yc), enabled (default true).
+
+fund_portfolios:
+
+  - name: "Y Combinator"
+    kind: yc
+    enabled: true
+
+  - name: "South Park Commons"
+    kind: ats_links
+    url: "https://www.southparkcommons.com/jobs"
+    enabled: true
+
+  - name: "Greylock"
+    kind: ats_links
+    url: "https://greylock.com/jobs/portfolio-jobs/"
+    enabled: true
+
+  - name: "Pear VC"
+    kind: wordpress
+    url: "https://pear.vc/wp-json/wp/v2/pear_vc_company"
+    enabled: true
+
+  - name: "Work-Bench"
+    kind: company_links
+    url: "https://www.work-bench.com/portfolio"
+    enabled: true
+
+  - name: "Mythos Ventures"
+    kind: company_links
+    url: "https://www.mythos.vc/portfolio"
+    enabled: true

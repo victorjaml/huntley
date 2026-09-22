@@ -1,0 +1,39 @@
+# ─── Personal data — never committed ────────────────────────────────
+# Everything a fresh clone must supply for itself. The repo ships only
+# *.example.* counterparts; the real files live here and stay local.
+
+# Your resolved config + secrets
+.env
+.env.*
+!.env.example
+config/huntley.yml
+config/watchlist.yml
+# (formerly config/portals.yml — kept so an old checkout cannot commit it either)
+config/portals.yml
+config/profile.yml
+config/preferences.yml
+
+# All runtime state: scan history, digests, shortlist, career-ops data root
+data/
+!data/.gitkeep
+
+# Your CV, in any form
+cv.md
+cv/
+resume/
+*.tex
+!templates/*.tex
+*.pdf
+
+# Local overrides
+.huntley-local
+*.local.yml
+
+# ─── Standard noise ─────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+.DS_Store
+*.log
+coverage/
+.vscode/
+.idea/

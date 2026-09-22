@@ -1,0 +1,262 @@
+# huntley — pipeline plumbing.
+#
+# How the pipeline runs: your email, CV path, and which sources are on — plus
+# every tuning lever for ranking, digest size, and the tracker sheet.
+#
+# Copy to config/huntley.yml (`huntley setup` does this). Secrets do NOT go
+# here — write ${VAR_NAME} and put the value in .env.
+#
+# What huntley looks FOR lives in config/preferences.yml (the only file the
+# weekly loop ever proposes changes to). What it scans by name lives in
+# config/watchlist.yml. This file is infrastructure: sources, transport, budgets.
+#
+# Values below match huntley's built-in defaults. Flip `enabled`, fill queries,
+# and tune numbers — every key you can change is listed.
+
+identity:
+  name: "Your Name"                 # required
+  email: "you@example.com"          # required — where the digest is delivered
+  timezone: "America/Los_Angeles"
+
+# Resume: ranking reads only preferences.background.summary. Fill it once with:
+#   huntley setup --cv /path/to/resume.tex
+# (.tex / .md / .txt, or a directory of those.)
+
+# ── Sources ─────────────────────────────────────────────────────────
+## Two ATS layers plus board layers. The ATS layers are where roles appear
+# first; the board layers catch what the directories miss. At least one source
+# must be enabled.
+
+sources:
+
+  # How many days of undelivered board observations to keep under
+  # data/collection/observations/ for crash recovery. Older run directories
+  # are deleted by name without opening them.
+  collection_lookback_days: 3
+
+  # Layer 1 — your watchlist. Everything under tracked_companies in
+  # config/watchlist.yml, checked every run through its own ATS board.
+  watchlist:
+    enabled: true
+    since_days: null                # null = no date floor; catch anything new
+
+  # Layer 1b — VC portfolio boards listed under portfolio_boards in
+  # config/watchlist.yml. Scanned in parallel with other lanes.
+  portfolio_boards:
+    enabled: true
+    since_days: null                # null = no date floor
+
+  # Layer 1c — VC funds listed under fund_portfolios in config/watchlist.yml.
+  # Each fund's companies are resolved to their job boards (cached: a month when
+  # found) and those boards are scanned. YC companies with no board of their
+  # own are read from their ycombinator.com job page instead.
+  fund_portfolios:
+    enabled: true
+    since_days: 7                   # date floor for boards scanned here
+    resolve_budget_seconds: 120     # time per run for resolving new companies
+    yc_pages: true
+    yc_max_age_days: 30             # YC pages keep roles up for years
+    yc_budget_seconds: 300
+
+  # Layer 2 — the wide net: every open role on Greenhouse, Lever, Ashby,
+  # Workday, BambooHR and Paylocity, downloaded once a day from
+  # job-board-aggregator (~1.4M roles, seconds to fetch) instead of crawled.
+  # Company names are looked up from each board so your block list applies.
+  # If the dataset is stale or down, fallback_sweep is crawled directly.
+  ats_dataset:
+    enabled: true
+    since_days: 3                   # roles the dataset first saw in this window
+    ats: [Greenhouse, Lever, Ashby, Workday, BambooHR, Paylocity]
+    max_age_hours: 48               # older dataset → use fallback_sweep
+    fallback_sweep: [greenhouse, lever, ashby]
+    name_budget_seconds: 90         # time spent resolving company names
+
+  # Layer 2b — boards that have produced a role passing your filters, from any
+  # source, fetched directly every run so they are same-day rather than a day
+  # behind. Learned automatically; a board drops out after within_days quiet.
+  active_boards:
+    enabled: true
+    within_days: 90
+    since_days: 3
+
+  # Layer 2c — freehire's whole recent feed: every role it first recorded in
+  # the last open_within_days in these countries (~9,000 US roles a day across
+  # 236 sources), filtered locally. A passing role can add its board to
+  # active_boards. Sources the ATS dataset covers are excluded by default.
+  freehire_feed:
+    enabled: false
+    countries: [us]
+    open_within_days: 2
+    overlap_hours: 6              # created_at is freehire's own record time; 6h is enough
+
+  # The old crawl of the public ATS directories. Replaced by ats_dataset (it took
+  # over an hour); still used as ats_dataset's fallback, with these settings.
+  ats_sweep:
+    enabled: false
+    since_days: 2
+    seeds: []                       # optional company/fund seeds for the crawl
+    limit: null                     # max companies per ATS; null = all
+    # Each directory is swept by its own process. A directory that has not
+    # finished after timeout_minutes is stopped and its matches lost.
+    ats: [greenhouse, lever, ashby]
+    timeout_minutes: 30
+
+  # Layer 3 — LinkedIn's public job pages. Deliberately low volume: one page
+  # per query by default, a real gap between requests, and a hard refusal to
+  # run from a datacenter IP (CI markers disable this lane automatically).
+  # Fill queries and locations before enabling.
+  linkedin:
+    enabled: false
+    jobage_days: 1                  # only postings from the last N days
+    max_pages: 1
+    delay_ms: 9000
+    request_limit: 30               # safety cap; the whole plan is sent under it
+    remote: null                    # remote | hybrid | onsite | null
+    queries: []                     # e.g. ["software engineer", "AI safety"]
+    locations: []                   # e.g. ["United States"] or a metro
+
+  # Layer 3b — Wellfound's public role pages (/role/l/<role>/<city>). Slugs are
+  # Wellfound's own: an unknown role is reported, not guessed. Low volume —
+  # one page per role × city, a gap between requests, stop on the first block.
+  # Fill roles and locations before enabling.
+  wellfound:
+    enabled: false
+    roles: []                       # e.g. [machine-learning-engineer, ai-engineer]
+    locations: []                   # e.g. [san-francisco, remote]
+    max_age_days: 14                # Wellfound keeps roles listed for months
+    max_pages: 1
+    delay_ms: 6000
+    request_limit: 100
+
+  # Layer 3c — Built In's city sites (employers post there directly). Only the
+  # category pages its robots.txt allows; keyword search is disallowed.
+  # Fill markets before enabling.
+  builtin:
+    enabled: false
+    markets: []                     # e.g. [www.builtinsf.com, www.builtinnyc.com]
+    categories: [dev-engineering, data-analytics]
+    max_pages: 4                    # 25 roles a page, roughly newest first
+    since_days: 7
+
+  # Layer 3d — Hacker News' monthly "Ask HN: Who is hiring?" thread.
+  hackernews:
+    enabled: false
+
+  # Layer 4 — freehire.me keyword search. Returns full job descriptions, so the
+  # ranker can judge contents rather than title alone. Fill queries before enabling.
+  freehire:
+    enabled: false
+    since_days: 2
+    limit: 50
+    max_pages: 1                    # relevance-ranked; not catch-up. freehire_feed covers the rest
+    remote: null                    # true | false | null
+    locations: ["us"]               # two-letter codes are countries; anything
+                                    # else is treated as a city facet
+    queries: []                     # e.g. ["software engineer"]
+
+# ── Ranking ─────────────────────────────────────────────────────────
+#
+# huntley drives a headless agent CLI you already have installed rather than a
+# metered API. On a Claude Pro plan `claude -p` costs no API money — it draws on
+# your existing subscription usage. Without a CLI, ranking is heuristic only.
+#
+# Defaults below are the recommended settings after the Sept 2026 reliability
+# pass (smaller batches, concurrent calls, overall deadline, null max_llm).
+# Explicit values in your huntley.yml are preserved; these defaults apply only
+# to keys you omit. Migrating from batch_size 25 / max_llm 250: leave max_llm
+# null to rank all eligible roles (subject to the deadline), or set a finite
+# budget if you want to cap new model submissions.
+
+rank:
+  cli: claude                       # claude | gemini | codex | opencode | cursor-agent
+  model: null                       # null = the CLI's default; or a model slug
+  max_llm: null                     # null = all roles past filters/caps; 0 = none; N = at most N new submissions (cache hits do not count)
+  batch_size: 8                     # roles per invocation
+  concurrency: 3                    # parallel model calls (1–4)
+  min_score: 3.0                    # below this, a role is not shown
+  max_per_company: 3                # roles per company sent to the model; the rest show as "+N more"
+  watchlist_bonus: 0.5              # added to the model's score for tracked_companies, before min_score
+  timeout_ms: 180000                # per-call timeout
+  total_timeout_ms: null            # null = derive from max_llm/batch_size/concurrency/timeout_ms;
+                                    # a number is a hard wall-clock cap (includes CLI detect + cache)
+  cache:
+    enabled: true                   # reuse valid model scores across dry-run → real / retries
+    ttl_hours: 168
+
+# ── Description enrichment ──────────────────────────────────────────
+#
+# After filters/caps, fetch missing Greenhouse/Lever/Ashby descriptions before
+# ranking. Descriptions already collected (sidecars, freehire, wellfound) are
+# not limited by max_jobs. Disable for a network-free --no-scan replay.
+
+enrichment:
+  enabled: true
+  max_jobs: 100                     # max missing descriptions to fetch this run
+  concurrency: 4
+  request_timeout_ms: 10000
+  total_timeout_ms: 60000
+  cache_ttl_hours: 24
+
+# ── Digest ──────────────────────────────────────────────────────────
+
+digest:
+  # Keep this true. A zero-match day still sends, so a silent inbox can only
+  # ever mean the job failed to run — which is the point of the whole design.
+  send_on_zero_matches: true
+  max_rows: 50                      # matches shown per digest
+  subject_prefix: "huntley"
+
+# ── Email (outbound only — huntley never reads a mailbox) ───────────
+
+email:
+  provider: console                 # console | resend | smtp | mailjet
+  from: "huntley@yourdomain.com"    # required when provider is not console
+  from_name: "huntley"
+  to: "you@example.com"             # defaults to identity.email if omitted
+  reply_to: null
+  # SMTP only (or set SMTP_HOST / SMTP_PORT in .env):
+  # host: "smtp.fastmail.com"
+  # port: 587
+
+# ── Tracker sheet ───────────────────────────────────────────────────
+#
+# The Add button in each digest row is a signed link to a Google Apps Script
+# web app bound to your tracker sheet (see apps-script/Code.gs and
+# docs/google-sheets-setup.md). The script appends the row; huntley reads the sheet
+# back on the next run. Nothing listens on your network.
+
+sheet:
+  enabled: false
+  webapp_url: ""                    # the Apps Script /exec URL
+  spreadsheet_id: ""                # only needed for `huntley sync`
+  tab_applications: "Applications"
+  tab_inbox: "Inbox"                # where Add clicks land
+  tab_approvals: "Approvals"        # where APPROVE clicks land
+  # gids from each tab's published CSV URL — without one, that tab is not read
+  # (APPROVE clicks never apply; hand-recorded outcomes are never seen):
+  gids:
+    inbox: null                     # e.g. 0
+    applications: null              # e.g. 123456789
+    approvals: null                 # e.g. 987654321
+
+# ── Weekly review ───────────────────────────────────────────────────
+
+weekly:
+  enabled: true
+  # Below this much evidence, the weekly run says "not enough data yet" and
+  # proposes nothing, rather than inventing a pattern from four data points.
+  min_added: 8
+  min_shown: 40
+  lookback_days: 28
+
+# ── Catch-up collection ─────────────────────────────────────────────
+#
+# huntley run (and daily) derives each source's fetch window from the last
+# successful scan of that source, so weeks between runs still catch up.
+# fixed_window restores the old per-source age caps as upper bounds.
+
+collection:
+  mode: since_last_success      # since_last_success | fixed_window
+  initial_lookback_days: 30     # first run / new source bootstrap
+  overlap_hours: 48             # re-fetch this much before coveredThrough
+

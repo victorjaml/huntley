@@ -1,0 +1,20 @@
+#!/usr/bin/env node
+// A stub for the ranking CLI, used by the offline end-to-end test.
+//
+// huntley shells out to `claude -p <prompt>` to rank. That is the one step in
+// the pipeline that is both slow (~2 minutes) and non-deterministic, so the
+// offline test puts this on PATH instead. It parses the ids out of the prompt
+// it was handed and emits a scored row for each, wrapped in the same prose and
+// fenced-block noise a real agent CLI produces — which is exactly what
+// extractJson() has to survive.
+const prompt = process.argv.slice(2).join(' ');
+const ids = [...prompt.matchAll(/^id:\s*([0-9a-f]{6,})$/gm)].map((m) => m[1]);
+
+// Deterministic pseudo-score from the id, so assertions are stable.
+const rows = ids.map((id, i) => ({
+  id,
+  score: [5, 4.5, 4, 3.5, 3, 2.5][(parseInt(id.slice(0, 2), 16) + i) % 6],
+  why: `Stub reason for ${id.slice(0, 6)} — long enough to pass the twelve-character minimum.`,
+}));
+
+process.stdout.write(`Here are the scores you asked for.\n\n\`\`\`json\n${JSON.stringify(rows, null, 2)}\n\`\`\`\n\nLet me know if you want any adjusted.\n`);

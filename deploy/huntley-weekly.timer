@@ -1,0 +1,12 @@
+[Unit]
+Description=huntley — weekly preference review, Sunday 08:00
+Documentation=https://github.com/victorjaml/huntley
+
+[Timer]
+OnCalendar=Sun *-*-* 08:00:00
+RandomizedDelaySec=10min
+Persistent=true
+Unit=huntley-weekly.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,10 @@
+{
+  "jobs": [
+    {
+      "id": "11111111-2222-3333-4444-555566667777",
+      "title": "Research Engineer",
+      "jobUrl": "https://jobs.ashbyhq.com/acme/11111111-2222-3333-4444-555566667777",
+      "descriptionPlain": "About the role\nBuild evaluation harnesses.\n\nQualifications\nExperience with ranking systems and LLM evals.\n\nCompensation\n$200k-$250k"
+    }
+  ]
+}

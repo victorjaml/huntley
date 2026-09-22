@@ -1,0 +1,55 @@
+[Unit]
+Description=huntley — weekly preference review
+Documentation=https://github.com/victorjaml/huntley
+# The scan is entirely network-bound, so starting before the link is up wastes
+# a run and mails a digest full of "source failed" warnings.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# The account that owns /opt/huntley. Create it (useradd --system huntley) or
+# change this to your own user. Not %i: that is only filled in for template
+# units (huntley@.service), and in a plain unit it expands to nothing.
+User=huntley
+WorkingDirectory=/opt/huntley
+
+# The .env lives outside the unit so secrets are not readable via systemctl cat.
+EnvironmentFile=/opt/huntley/.env
+Environment=NODE_ENV=production
+Environment=HUNTLEY_LOG_LEVEL=info
+Environment=NO_COLOR=1
+
+ExecStart=/usr/bin/node /opt/huntley/bin/huntley.mjs weekly
+
+# A run that hangs on a slow board must not still be holding the lock tomorrow.
+TimeoutStartSec=20min
+
+# One retry, ten minutes later. Transient DNS and a board having a bad morning
+# are the common failures and both clear on their own; more retries than this
+# turn a provider outage into a stream of near-identical emails.
+Restart=on-failure
+RestartSec=10min
+
+# Hardening. huntley reads its config, writes its data directory, and makes
+# outbound HTTPS calls. It needs nothing else.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/huntley/data /opt/huntley/config
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=huntley
+
+[Install]
+WantedBy=multi-user.target

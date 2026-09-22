@@ -1,0 +1,139 @@
+# huntley — preference memory.
+#
+# What a good role looks like for you: titles, keywords, exclusions, locations,
+# and a short background the ranker scores every posting against.
+#
+# Copy to config/preferences.yml (`huntley setup` does this). Fill every section
+# below — placeholders say "example" so you can see the shape. Filters live only
+# here; early board-scan title terms are derived from this file in-process.
+#
+# The weekly loop only ever proposes changes to this file. Every change arrives
+# as a diff in an email; nothing is written until you click APPROVE. Edit it by
+# hand any time — your edits are ground truth.
+
+targets:
+
+  # How a job title is judged, in three steps:
+  #
+  #   1. exclude_titles  anything here and the title is out, from any source
+  #   2. role_terms      the title must contain at least one of these
+  #   3. title_keywords  every one found adds a point; more is more relevant
+  #
+  # Matching is on whole words, case-insensitive. A trailing * matches the start
+  # of a word ("engineer*" matches engineer, engineers, engineering). A space
+  # also matches a hyphen or slash ("post training" matches "Post-Training").
+  # Overlapping keywords count once, longest first: with both "ai safety" and
+  # "safety" listed, "AI Safety Engineer" scores 1, not 2.
+
+  # Required. The kinds of role you do. A title with none of these is dropped.
+  role_terms:
+    - "engineer*"
+
+  # Each one found in a title adds a point. A flat list works:
+  #   title_keywords: [research, "machine learning"]
+  # Grouping by focus area lets other rules name a whole area as "@group"
+  # (see exclude_exceptions). Groups score exactly like one flat list.
+  title_keywords:
+    example_area:
+      - "example"
+
+  # Minimum keyword points to be considered. 0 = a title that only hits a
+  # role_term is still eligible (ranked low). Raise it to cut volume.
+  min_keyword_score: 0
+
+  # Words that nudge the pre-sort up when the ranking budget is tight
+  # (e.g. staff, senior, "principal"). Empty = no level preference in sorting.
+  preferred_levels: []
+
+  # Never show these, whatever else matches — including compounds that contain
+  # a role word but mean something else ("mechanical engineer", "sales").
+  exclude_titles:
+    - "intern"
+    - "internship"
+
+  # Cancel a specific exclusion when the title also contains one of the listed
+  # words anywhere. "@group" means any keyword in that title_keywords group.
+  # Example — keep staff (or robotics) software roles despite excluding the rest:
+  #   exclude_exceptions:
+  #     software engineer: [staff, "@example_area"]
+  exclude_exceptions: {}
+
+# ── Who you are ─────────────────────────────────────────────────────
+#
+# The ranker weighs every posting against this. Vagueness here produces vague
+# "why this fits" lines. Fill it from a resume once:
+#   huntley setup --cv /path/to/resume.tex
+# Then edit by hand any time — the weekly loop never rewrites summary.
+
+background:
+  summary: >
+    Describe yourself in two or three sentences: years of experience, what
+    you've done, and what you want to be doing next.
+
+  strengths:
+    - "example strength"
+
+  domains:
+    - "example domain"
+
+# ── Where you will work ─────────────────────────────────────────────
+
+location:
+  # Where you are based today (shown to the ranker; not a hard filter).
+  base: "City, ST"
+
+  # The places you would go into an office. A posting shows up only if it names
+  # one of these, or is remote. List only what you want — huntley recognises
+  # everywhere else on its own, including the traps: "Portland, ME" is not
+  # Portland, Oregon; "Rochester, New York" is not New York City.
+  #
+  # Each entry is a state ("California"), a city in a state ("Seattle, WA"), or
+  # a city ("NYC"). Leave empty for anywhere in the US.
+  allow:
+    - "California"
+
+  # Remote roles: rank_lower (kept, but below an office role in `allow`),
+  # accept, or exclude. A posting offering one of your places OR remote counts
+  # as an office role. Remote in another country is not accepted.
+  remote: rank_lower
+
+# ── Pay (optional — shown to the ranker, not a hard filter) ─────────
+
+compensation:
+  minimum: ""                       # e.g. "$180k base"
+  target: ""                        # e.g. "$250k total"
+  currency: USD
+
+# ── Hard and soft filters ───────────────────────────────────────────
+
+filters:
+  # Words in a title that mean the level is wrong for you (dropped, not ranked).
+  # Prefer exclude_titles for "not a job you can take" (intern, new grad).
+  exclude_seniority: []
+
+  # Companies you never want to see again. Matched as whole words, or with
+  # spaces/punctuation stripped for entries of five letters or more
+  # ("Scale AI" also blocks "scaleai").
+  block_companies: []
+
+  # Only checked when huntley has the job description (aggregator / freehire).
+  block_content: []
+
+  # Not rejected — just pushed down the pre-sort when the ranking budget is tight.
+  deprioritize:
+    - "contract"
+    - "part-time"
+
+# ── Durable notes ───────────────────────────────────────────────────
+#
+# Free-text instructions the ranker reads on every run. This is where judgment
+# a keyword list cannot express lives — and where the weekly review's approved
+# proposals accumulate.
+#
+# Write them as instructions to a screener, e.g.:
+#   - "Pre-seed startups with no named funding have not converted; score them a
+#      point lower unless the team is someone I would already work for."
+#   - "Roles calling themselves 'full stack' have been backend in practice at
+#      the companies I like — do not reject on the title alone."
+
+notes: []

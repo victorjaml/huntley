@@ -1,0 +1,12 @@
+[
+  {
+    "text": "Research Engineer",
+    "hostedUrl": "https://jobs.lever.co/acme/aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    "descriptionPlain": "Introduction about the company and the team.",
+    "lists": [
+      {"text": "Qualifications", "content": "<li>Ranking systems</li><li>Evaluation harnesses</li>"},
+      {"text": "Nice to have", "content": "<li>Published papers</li>"}
+    ],
+    "categories": {"location": "San Francisco"}
+  }
+]
